@@ -1,7 +1,7 @@
 # 🎯 Royal Carrom Game  
 
 <p align="center">
-  <img src="assets/game-preview.png" width="600"/>
+  <img src="assets/carrom.png" width="600"/>
 </p>
 
 <p align="center">
