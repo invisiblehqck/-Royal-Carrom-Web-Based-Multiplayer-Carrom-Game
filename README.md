@@ -1,7 +1,7 @@
 # 🎯 Royal Carrom Game  
 
 <p align="center">
-  <img src="assets/game-preview.png" width="500"/>
+  <img src="assets/carrom.png" width="500"/>
 </p>
 <p align="center">
   <img src="https://readme-typing-svg.herokuapp.com?size=28&duration=3000&color=F7A41D&center=true&vCenter=true&width=600&lines=Royal+Carrom+Game;Classic+Board+Game+in+Browser;Built+With+Pure+JavaScript" />
