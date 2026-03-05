@@ -12,7 +12,7 @@
 
 ### 🎮 Gameplay Demo  
 <p align="center">
-  <img src="assets/gameplay.gif" width="600"/>
+  <img src="assets/carrom1.gif" width="600"/>
 </p>
 
 ---
