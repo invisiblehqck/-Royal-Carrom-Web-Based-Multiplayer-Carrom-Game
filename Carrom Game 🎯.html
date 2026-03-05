@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pro Carrom 3D</title>
+    <style>
+        :root {
+            --board-size: 90vmin; /* Responsive board size */
+            --board-bg: #c8a064; /* Lighter wood */
+            --frame-bg: #654321; /* Darker wood */
+            --pocket-bg: #222;
+            --pocket-net-color: rgba(200,200,200,0.3);
+            --line-color: rgba(0,0,0,0.4);
+            --striker-color-main: #007bff;
+            --striker-color-accent: #e0e0e0;
+            --coin-white: #f5f5f5;
+            --coin-black: #2a2a2a;
+            --coin-queen: #e91e63; /* Vibrant pink */
+            --text-light: #f0f0f0;
+            --text-dark: #333;
+            --accent-color: #ff9800; /* Orange for buttons/highlights */
+            --shadow-strong: 0 6px 12px rgba(0,0,0,0.3);
+            --shadow-light: 0 2px 4px rgba(0,0,0,0.2);
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Basic Reset & Fullscreen Setup */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevent scrollbars */
+            background-color: #3d3d3d; /* Darker background for contrast */
+            font-family: var(--font-family);
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #app-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative; /* For absolute positioning of controls */
+        }
+
+        #game-area {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Perspective for 3D effect on board */
+            perspective: 1500px; 
+        }
+
+        #carrom-board {
+            width: var(--board-size);
+            height: var(--board-size);
+            background-color: var(--board-bg);
+            border: calc(var(--board-size) * 0.035) solid var(--frame-bg); /* Responsive border */
+            position: relative;
+            box-shadow: var(--shadow-strong), inset 0 0 calc(var(--board-size) * 0.05) rgba(0,0,0,0.2);
+            border-radius: calc(var(--board-size) * 0.02);
+            /* Slight 3D tilt - adjust as needed for "Android Studio" feel */
+            transform: rotateX(10deg) rotateY(0deg); /* Subtle tilt */
+            transform-style: preserve-3d; /* Important for 3D children */
+            transition: transform 0.5s ease-out;
+        }
+        #carrom-board.flat-view { /* For easier aiming if tilt is too much */
+            transform: rotateX(0deg) rotateY(0deg);
+        }
+
+
+        .pocket {
+            width: calc(var(--board-size) * 0.1);
+            height: calc(var(--board-size) * 0.1);
+            background-color: var(--pocket-bg);
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: inset 0 0 calc(var(--board-size) * 0.02) rgba(0,0,0,0.7);
+            /* Netting illusion */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .pocket::before { /* Simple net illusion */
+            content: '';
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            border: 2px dashed var(--pocket-net-color);
+        }
+
+        /* Responsive pocket positioning */
+        #pocket-tl { top: calc(var(--board-size) * -0.025); left: calc(var(--board-size) * -0.025); }
+        #pocket-tr { top: calc(var(--board-size) * -0.025); right: calc(var(--board-size) * -0.025); }
+        #pocket-bl { bottom: calc(var(--board-size) * -0.025); left: calc(var(--board-size) * -0.025); }
+        #pocket-br { bottom: calc(var(--board-size) * -0.025); right: calc(var(--board-size) * -0.025); }
+
+        .baseline {
+            position: absolute;
+            background-color: var(--line-color);
+            height: calc(var(--board-size) * 0.006);
+            border-radius: calc(var(--board-size) * 0.003);
+        }
+        .baseline-horizontal {
+            width: 70%;
+            left: 15%;
+        }
+        #baseline-top { top: calc(var(--board-size) * 0.18); } /* Adjusted for perspective */
+        #baseline-bottom { bottom: calc(var(--board-size) * 0.18); }
+
+        .baseline-circle {
+            position: absolute;
+            width: calc(var(--board-size) * 0.04);
+            height: calc(var(--board-size) * 0.04);
+            border: calc(var(--board-size) * 0.004) solid var(--line-color);
+            border-radius: 50%;
+            background-color: #ff000030; /* Reddish tint */
+        }
+        #baseline-top-left-circle { top: calc(var(--board-size) * 0.16); left: 15%; }
+        #baseline-top-right-circle { top: calc(var(--board-size) * 0.16); right: 15%; }
+        #baseline-bottom-left-circle { bottom: calc(var(--board-size) * 0.16); left: 15%; }
+        #baseline-bottom-right-circle { bottom: calc(var(--board-size) * 0.16); right: 15%; }
+
+        #center-circle-outer {
+            width: calc(var(--board-size) * 0.22);
+            height: calc(var(--board-size) * 0.22);
+            border: calc(var(--board-size) * 0.005) solid #c00;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #center-circle-inner {
+            width: calc(var(--board-size) * 0.08);
+            height: calc(var(--board-size) * 0.08);
+            background-color: #c00;
+            border-radius: 50%;
+        }
+
+        /* Arrows (can be SVG for better quality) */
+        .arrow-guide {
+            position: absolute;
+            width: 0; height: 0;
+            border-style: solid;
+            opacity: 0.5;
+        }
+        .arrow-tl-1 {
+            border-width: 0 calc(var(--board-size)*0.01) calc(var(--board-size)*0.02) calc(var(--board-size)*0.01);
+            border-color: transparent transparent var(--line-color) transparent;
+            top: calc(var(--board-size)*0.08); left: calc(var(--board-size)*0.08);
+            transform: rotate(-45deg);
+        }
+         /* Add more arrows for other corners symmetrically */
+        .arrow-tr-1 {
+            border-width: 0 calc(var(--board-size)*0.01) calc(var(--board-size)*0.02) calc(var(--board-size)*0.01);
+            border-color: transparent transparent var(--line-color) transparent;
+            top: calc(var(--board-size)*0.08); right: calc(var(--board-size)*0.08);
+            transform: rotate(45deg);
+        }
+        .arrow-bl-1 {
+            border-width: 0 calc(var(--board-size)*0.01) calc(var(--board-size)*0.02) calc(var(--board-size)*0.01);
+            border-color: transparent transparent var(--line-color) transparent;
+            bottom: calc(var(--board-size)*0.08); left: calc(var(--board-size)*0.08);
+            transform: rotate(-135deg);
+        }
+        .arrow-br-1 {
+            border-width: 0 calc(var(--board-size)*0.01) calc(var(--board-size)*0.02) calc(var(--board-size)*0.01);
+            border-color: transparent transparent var(--line-color) transparent;
+            bottom: calc(var(--board-size)*0.08); right: calc(var(--board-size)*0.08);
+            transform: rotate(135deg);
+        }
+
+
+        .coin {
+            width: calc(var(--board-size) * 0.045); /* Relative size */
+            height: calc(var(--board-size) * 0.045);
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 calc(var(--board-size)*0.002) calc(var(--board-size)*0.005) rgba(0,0,0,0.4), 
+                        inset 0 calc(var(--board-size)*0.001) calc(var(--board-size)*0.002) rgba(255,255,255,0.3); /* 3D effect */
+            transform: translateZ(calc(var(--board-size) * 0.005)); /* Slight lift */
+            transition: transform 0.1s ease-out, opacity 0.2s; /* For pocketing animation */
+        }
+        .coin.white { background-color: var(--coin-white); border: 1px solid #bbb; }
+        .coin.black { background-color: var(--coin-black); border: 1px solid #111; }
+        .coin.queen { background-color: var(--coin-queen); border: 1px solid #a01040; }
+        .coin.pocketed { transform: translateZ(-20px) scale(0.5); opacity: 0; }
+
+
+        #striker {
+            width: calc(var(--board-size) * 0.065);
+            height: calc(var(--board-size) * 0.065);
+            border-radius: 50%;
+            position: absolute;
+            background-image: radial-gradient(circle, var(--striker-color-accent) 30%, var(--striker-color-main) 32%, var(--striker-color-main) 55%, var(--striker-color-accent) 57%);
+            box-shadow: var(--shadow-light), inset 0 1px 2px rgba(255,255,255,0.5);
+            cursor: grab;
+            z-index: 100; /* Always on top */
+            transform: translateZ(calc(var(--board-size) * 0.01)); /* Lifted more */
+        }
+
+        #aim-line {
+            position: absolute;
+            background: linear-gradient(to right, rgba(255,0,0,0.7), rgba(255,100,100,0.2));
+            transform-origin: 0 50%;
+            display: none;
+            z-index: 90;
+            height: 3px;
+            border-radius: 3px;
+            pointer-events: none; /* Prevents interference with mouse events */
+        }
+        #power-indicator-bar-container {
+            position: absolute;
+            bottom: 2vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30vw;
+            min-width: 200px;
+            max-width: 300px;
+            height: 20px;
+            background-color: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 200;
+            display: none; /* Show when aiming */
+        }
+        #power-indicator-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(to right, #4caf50, #ffeb3b, #f44336);
+            border-radius: 10px;
+            transition: width 0.1s linear;
+        }
+
+
+        /* Control Panel & Info */
+        #controls-panel {
+            position: absolute;
+            top: 2vh;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            padding: 8px;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            z-index: 200;
+        }
+        .control-button {
+            background-color: var(--accent-color);
+            color: var(--text-dark);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: var(--shadow-light);
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .control-button:hover { background-color: #ffb74d; } /* Lighter orange */
+        .control-button:active { transform: scale(0.95); }
+
+        #info-panel {
+            position: absolute;
+            bottom: 2vh; /* Positioned above power bar or side */
+            right: 2vw;
+            padding: 15px;
+            background: rgba(40,40,40,0.8);
+            border-radius: 10px;
+            box-shadow: var(--shadow-strong);
+            text-align: left;
+            z-index: 150;
+            font-size: calc(0.8em + 0.5vmin);
+        }
+        #info-panel p { margin: 5px 0; }
+        #info-panel #message { 
+            font-weight: bold; 
+            color: var(--accent-color); 
+            min-height: 1.2em; /* Prevent layout shift */
+            margin-top: 10px;
+        }
+        .player-turn-highlight {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        /* Modal for Rules */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            color: var(--text-dark);
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+            box-shadow: var(--shadow-strong);
+            text-align: left;
+        }
+        .modal-content h2 { color: var(--accent-color); margin-bottom: 15px; }
+        .modal-content ul { list-style-position: inside; padding-left: 10px; }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-button:hover, .close-button:focus {
+            color: black; text-decoration: none;
+        }
+
+        /* Simple loader/spinner */
+        #loader {
+            position: fixed;
+            left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid var(--accent-color);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            z-index: 2000; /* Above everything */
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="loader"></div>
+        <div id="controls-panel">
+            <button id="reset-button" class="control-button">Reset</button>
+            <button id="rules-button" class="control-button">Rules</button>
+            <button id="sound-toggle-button" class="control-button">Sound: ON</button>
+            <button id="fullscreen-button" class="control-button">Full Screen</button>
+            <!-- <button id="toggle-view-button" class="control-button">Toggle View</button> -->
+        </div>
+
+        <div id="game-area">
+            <div id="carrom-board">
+                <div class="pocket" id="pocket-tl"></div>
+                <div class="pocket" id="pocket-tr"></div>
+                <div class="pocket" id="pocket-bl"></div>
+                <div class="pocket" id="pocket-br"></div>
+
+                <div class="baseline baseline-horizontal" id="baseline-top"></div>
+                <div class="baseline-circle" id="baseline-top-left-circle"></div>
+                <div class="baseline-circle" id="baseline-top-right-circle"></div>
+
+                <div class="baseline baseline-horizontal" id="baseline-bottom"></div>
+                <div class="baseline-circle" id="baseline-bottom-left-circle"></div>
+                <div class="baseline-circle" id="baseline-bottom-right-circle"></div>
+                
+                <div id="center-circle-outer">
+                    <div id="center-circle-inner"></div>
+                </div>
+
+                <div class="arrow-guide arrow-tl-1"></div>
+                <div class="arrow-guide arrow-tr-1"></div>
+                <div class="arrow-guide arrow-bl-1"></div>
+                <div class="arrow-guide arrow-br-1"></div>
+                
+                <div id="aim-line"></div>
+                 <!-- Coins and Striker will be added by JavaScript -->
+            </div>
+        </div>
+        
+        <div id="power-indicator-bar-container">
+            <div id="power-indicator-bar"></div>
+        </div>
+
+        <div id="info-panel">
+            <p>Player <span id="current-player">1 (White)</span>'s Turn</p>
+            <p>P1 (White): <span id="score-player1">0</span></p>
+            <p>P2 (Black): <span id="score-player2">0</span></p>
+            <p id="message"></p>
+        </div>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rules-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-rules-modal">&times;</span>
+            <h2>Carrom Rules (Simplified)</h2>
+            <ul>
+                <li>Players take turns striking. Player 1 is White, Player 2 is Black.</li>
+                <li>Pot your colored coins. White pots white, Black pots black.</li>
+                <li>The Queen (pink) can be pocketed after pocketing at least one of your own coins.</li>
+                <li>To secure the Queen, you must pocket one of your own coins in the *same* or *next* valid stroke.</li>
+                <li>If Queen is pocketed but not covered, it's returned to the center.</li>
+                <li>Pocketing the striker is a foul: opponent gets a turn, one of your pocketed coins is returned.</li>
+                <li>Pocketing opponent's coin: opponent gets a turn (unless own coin also pocketed).</li>
+                <li>Player with most points (or who clears their coins + Queen) wins. (Typically 29 points max or per board agreement).</li>
+                <li>White: 1 point per coin. Black: 1 point per coin. Queen: 3 points (if covered).</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const boardElement = document.getElementById('carrom-board');
+        const aimLineElement = document.getElementById('aim-line');
+        const powerIndicatorContainer = document.getElementById('power-indicator-bar-container');
+        const powerIndicatorBar = document.getElementById('power-indicator-bar');
+        const infoPlayerElement = document.getElementById('current-player');
+        const infoScore1Element = document.getElementById('score-player1');
+        const infoScore2Element = document.getElementById('score-player2');
+        const messageElement = document.getElementById('message');
+        const resetButton = document.getElementById('reset-button');
+        const rulesButton = document.getElementById('rules-button');
+        const soundToggleButton = document.getElementById('sound-toggle-button');
+        const fullscreenButton = document.getElementById('fullscreen-button');
+        // const toggleViewButton = document.getElementById('toggle-view-button');
+        const rulesModal = document.getElementById('rules-modal');
+        const closeRulesModalButton = document.getElementById('close-rules-modal');
+        const loaderElement = document.getElementById('loader');
+
+        // --- Game Constants & State ---
+        let BOARD_SIZE, COIN_RADIUS, STRIKER_RADIUS, POCKET_RADIUS, POCKET_MARGIN, BASELINE_Y_OFFSET, BASELINE_X_MIN, BASELINE_X_MAX;
+        const FRICTION = 0.98; // Slightly more friction
+        const MIN_VELOCITY = 0.05;
+        const MAX_STRIKE_POWER = 20; // Adjusted for finer control
+        const RESTITUTION = 0.8; // Bounciness
+
+        let coins = [];
+        let striker = {};
+        let pocketPositions = [];
+
+        let currentPlayer = 1;
+        let scorePlayer1 = 0;
+        let scorePlayer2 = 0;
+        let gameLoopId;
+        let isStriking = false; // True when pieces are moving
+        let isAiming = false; // True when player is dragging striker to aim
+        let queenPocketedTempBy = 0; // Who pocketed queen this turn, needs cover
+        let queenSecuredBy = 0; // Who has secured the queen
+        let soundEnabled = true;
+        let turnPocketedCoin = false; // Did current player pocket their own coin this turn?
+        let foulCommitted = false;
+
+        // Audio elements
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let strikeSoundBuffer, pocketSoundBuffer, collisionSoundBuffer;
+
+        // --- Game Logic Functions ---
+
+        function updateDimensions() {
+            // Use clientWidth as it reflects actual rendered size after CSS scaling
+            BOARD_SIZE = boardElement.clientWidth; 
+            COIN_RADIUS = BOARD_SIZE * 0.0225;
+            STRIKER_RADIUS = BOARD_SIZE * 0.0325;
+            POCKET_RADIUS = BOARD_SIZE * 0.05;
+            POCKET_MARGIN = BOARD_SIZE * 0.025; // How much pocket center is offset from visual edge
+
+            pocketPositions = [
+                { x: POCKET_MARGIN, y: POCKET_MARGIN },
+                { x: BOARD_SIZE - POCKET_MARGIN, y: POCKET_MARGIN },
+                { x: POCKET_MARGIN, y: BOARD_SIZE - POCKET_MARGIN },
+                { x: BOARD_SIZE - POCKET_MARGIN, y: BOARD_SIZE - POCKET_MARGIN }
+            ];
+            
+            BASELINE_Y_OFFSET = BOARD_SIZE * 0.18; // Matches CSS
+            const baselineCircleRadius = BOARD_SIZE * 0.02;
+            BASELINE_X_MIN = BOARD_SIZE * 0.15 + baselineCircleRadius + STRIKER_RADIUS; 
+            BASELINE_X_MAX = BOARD_SIZE * 0.85 - baselineCircleRadius - STRIKER_RADIUS;
+        }
+
+        function loadSound(url) {
+            return fetch(url)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer));
+        }
+
+        function playSound(buffer) {
+            if (!soundEnabled || !buffer || audioContext.state === 'suspended') return;
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioContext.destination);
+            source.start(0);
+        }
+
+        async function initSounds() {
+            try {
+                // Simple synthesized sounds if files are not available
+                // For real project, use short .wav or .mp3 files
+                // Placeholder: if you have sound files, put their paths here.
+                // strikeSoundBuffer = await loadSound('path/to/strike.wav');
+                // pocketSoundBuffer = await loadSound('path/to/pocket.wav');
+                // collisionSoundBuffer = await loadSound('path/to/collision.wav');
+                console.log("Sound setup (placeholder). Link actual sound files for effects.");
+            } catch (e) {
+                console.error("Error loading sounds:", e);
+                soundEnabled = false; // Disable sound if loading fails
+                updateSoundButton();
+            }
+        }
+        
+        function createCoin(id, type, x, y) {
+            const coinEl = document.createElement('div');
+            coinEl.classList.add('coin', type);
+            coinEl.id = `coin-${id}`;
+            boardElement.appendChild(coinEl);
+            return {
+                id: id, el: coinEl, x, y, vx: 0, vy: 0,
+                radius: COIN_RADIUS, type, mass: 1, isActive: true
+            };
+        }
+
+        function setupCoins() {
+            coins.forEach(c => c.el.remove());
+            coins = [];
+            let id = 0;
+            const centerX = BOARD_SIZE / 2;
+            const centerY = BOARD_SIZE / 2;
+
+            // Queen
+            coins.push(createCoin(id++, 'queen', centerX, centerY));
+
+            // Standard Carrom setup (approximate)
+            const r1 = COIN_RADIUS * 2.2; // Inner circle of coins
+            const r2 = COIN_RADIUS * 4.4; // Outer circle of coins
+
+            let whiteCount = 0;
+            let blackCount = 0;
+
+            // Inner 6 coins (alternating)
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * 2 * Math.PI;
+                const x = centerX + r1 * Math.cos(angle);
+                const y = centerY + r1 * Math.sin(angle);
+                const type = (i % 2 === 0) ? 'white' : 'black';
+                if (type === 'white') whiteCount++; else blackCount++;
+                coins.push(createCoin(id++, type, x, y));
+            }
+
+            // Outer 12 coins
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * 2 * Math.PI + (Math.PI / 12); // Offset for staggering
+                const x = centerX + r2 * Math.cos(angle);
+                const y = centerY + r2 * Math.sin(angle);
+                let type;
+                // Try to balance colors, a bit more structured than pure random
+                if (i < 3 || (i >= 6 && i < 9)) { // Groups that tend to be one color
+                    type = (i < 3) ? 'white' : 'black';
+                } else { // Groups that tend to be the other
+                    type = (i < 6) ? 'black' : 'white';
+                }
+                // Correction if one color is already full (9)
+                if (type === 'white' && whiteCount >= 9) type = 'black';
+                if (type === 'black' && blackCount >= 9) type = 'white';
+
+                if (type === 'white') whiteCount++; else blackCount++;
+                coins.push(createCoin(id++, type, x, y));
+            }
+            
+            // Ensure exactly 9 of each color if the above logic was imperfect
+            const typesToFill = {'white': 9-whiteCount, 'black': 9-blackCount};
+            for(const type in typesToFill){
+                for(let i=0; i < typesToFill[type]; i++){
+                    // Add to a less crowded spot if possible, simple for now
+                    coins.push(createCoin(id++, type, centerX + (Math.random()-0.5)*5, centerY + (Math.random()-0.5)*5));
+                }
+            }
+            // Final check and reposition for overlap - simplified
+             coins.forEach(c1 => {
+                coins.forEach(c2 => {
+                    if (c1.id !== c2.id && c1.isActive && c2.isActive) {
+                        const dx = c2.x - c1.x;
+                        const dy = c2.y - c1.y;
+                        let distance = Math.sqrt(dx * dx + dy * dy);
+                        const minDist = c1.radius + c2.radius;
+                        if (distance < minDist && distance > 0.01) { // Added small epsilon
+                           const overlap = (minDist - distance) / distance;
+                           c1.x -= overlap * dx * 0.25; // Spread them a bit
+                           c1.y -= overlap * dy * 0.25;
+                           c2.x += overlap * dx * 0.25;
+                           c2.y += overlap * dy * 0.25;
+                        } else if (distance < 0.01 && c1.id < c2.id) { // Exact overlap
+                            c2.x += minDist * 0.1; // Nudge one
+                        }
+                    }
+                });
+            });
+
+
+            renderAll();
+        }
+        
+        function resetStriker() {
+            if (!striker.el) { // Create striker if it doesn't exist
+                striker.el = document.createElement('div');
+                striker.el.id = 'striker';
+                boardElement.appendChild(striker.el);
+                striker.el.addEventListener('mousedown', handleStrikerMouseDown);
+                striker.el.addEventListener('touchstart', handleStrikerMouseDown, { passive: false });
+            }
+            
+            striker.vx = 0;
+            striker.vy = 0;
+            striker.radius = STRIKER_RADIUS;
+            striker.mass = 1.8; // Striker is heavier
+            striker.isPlaced = false;
+            striker.el.style.cursor = 'grab';
+            
+            const baselineY = (currentPlayer === 1) ? BOARD_SIZE - BASELINE_Y_OFFSET : BASELINE_Y_OFFSET;
+            striker.y = baselineY;
+            striker.x = BOARD_SIZE / 2;
+            
+            striker.x = Math.max(BASELINE_X_MIN, Math.min(BASELINE_X_MAX, striker.x));
+
+            renderStriker();
+            isStriking = false; // Not moving
+            isAiming = false; // Not aiming
+            messageElement.textContent = `Player ${currentPlayer}, place striker.`;
+            powerIndicatorContainer.style.display = 'none';
+            aimLineElement.style.display = 'none';
+        }
+
+        function renderStriker() {
+            striker.el.style.left = `${striker.x - striker.radius}px`;
+            striker.el.style.top = `${striker.y - striker.radius}px`;
+        }
+
+        function renderCoin(coin) {
+            if (coin.isActive) {
+                coin.el.style.left = `${coin.x - coin.radius}px`;
+                coin.el.style.top = `${coin.y - coin.radius}px`;
+                coin.el.classList.remove('pocketed');
+            } else {
+                coin.el.classList.add('pocketed'); // Trigger CSS animation for pocketing
+            }
+        }
+
+        function renderAll() {
+            renderStriker();
+            coins.forEach(renderCoin);
+        }
+
+        function updatePositions() {
+            let somethingMoved = false;
+            const pieces = [striker, ...coins.filter(c => c.isActive)];
+
+            pieces.forEach(p => {
+                if (!p.vx && !p.vy) return;
+
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx *= FRICTION;
+                p.vy *= FRICTION;
+
+                if (Math.abs(p.vx) < MIN_VELOCITY) p.vx = 0;
+                if (Math.abs(p.vy) < MIN_VELOCITY) p.vy = 0;
+                if (p.vx !== 0 || p.vy !== 0) somethingMoved = true;
+            });
+            return somethingMoved;
+        }
+
+        function handleCollisions() {
+            const allPieces = [striker, ...coins.filter(c => c.isActive)];
+            // Piece-wall collisions
+            allPieces.forEach(p => {
+                if (p.x - p.radius < 0) { p.x = p.radius; p.vx *= -RESTITUTION; playSound(collisionSoundBuffer); }
+                if (p.x + p.radius > BOARD_SIZE) { p.x = BOARD_SIZE - p.radius; p.vx *= -RESTITUTION; playSound(collisionSoundBuffer); }
+                if (p.y - p.radius < 0) { p.y = p.radius; p.vy *= -RESTITUTION; playSound(collisionSoundBuffer); }
+                if (p.y + p.radius > BOARD_SIZE) { p.y = BOARD_SIZE - p.radius; p.vy *= -RESTITUTION; playSound(collisionSoundBuffer); }
+            });
+
+            // Piece-piece collisions
+            for (let i = 0; i < allPieces.length; i++) {
+                for (let j = i + 1; j < allPieces.length; j++) {
+                    const p1 = allPieces[i];
+                    const p2 = allPieces[j];
+
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const minDist = p1.radius + p2.radius;
+
+                    if (distance < minDist && distance > 0) {
+                        playSound(collisionSoundBuffer);
+                        const overlap = (minDist - distance);
+                        const nx = dx / distance; // Normalized collision vector X
+                        const ny = dy / distance; // Normalized collision vector Y
+
+                        // Resolve overlap
+                        p1.x -= overlap * nx * (p2.mass / (p1.mass + p2.mass));
+                        p1.y -= overlap * ny * (p2.mass / (p1.mass + p2.mass));
+                        p2.x += overlap * nx * (p1.mass / (p1.mass + p2.mass));
+                        p2.y += overlap * ny * (p1.mass / (p1.mass + p2.mass));
+                        
+                        // Relative velocity
+                        const rvx = p1.vx - p2.vx;
+                        const rvy = p1.vy - p2.vy;
+                        
+                        // Velocity component along the normal
+                        const velAlongNormal = rvx * nx + rvy * ny;
+
+                        // Do not resolve if velocities are separating
+                        if (velAlongNormal > 0) continue;
+
+                        // Calculate impulse scalar
+                        const e = RESTITUTION;
+                        let imp = -(1 + e) * velAlongNormal;
+                        imp /= (1 / p1.mass + 1 / p2.mass);
+
+                        // Apply impulse
+                        const impulseX = imp * nx;
+                        const impulseY = imp * ny;
+
+                        p1.vx += impulseX / p1.mass;
+                        p1.vy += impulseY / p1.mass;
+                        p2.vx -= impulseX / p2.mass;
+                        p2.vy -= impulseY / p2.mass;
+                    }
+                }
+            }
+        }
+        
+        function checkPocketing() {
+            const piecesToCheck = [striker, ...coins.filter(c => c.isActive)];
+            let localFoul = false;
+            let localTurnPocketed = false;
+
+            pocketPositions.forEach(pocket => {
+                // Check striker
+                if (striker.vx !==0 || striker.vy !==0) { // Only check moving striker
+                    const distStrikerPocket = Math.sqrt(Math.pow(striker.x - pocket.x, 2) + Math.pow(striker.y - pocket.y, 2));
+                    if (distStrikerPocket < POCKET_RADIUS + striker.radius * 0.5) { // Easier to pocket striker
+                        messageElement.textContent = "Striker pocketed! FOUL!";
+                        playSound(pocketSoundBuffer);
+                        localFoul = true;
+                        striker.vx = 0; striker.vy = 0; 
+                        striker.x = -1000; striker.y = -1000; // Move off board visually
+                        
+                        // Penalty: one pocketed coin of current player returned to board (if any)
+                        if (currentPlayer === 1 && scorePlayer1 > 0) {
+                            scorePlayer1--;
+                            returnCoinToBoard('white');
+                        } else if (currentPlayer === 2 && scorePlayer2 > 0) {
+                            scorePlayer2--;
+                            returnCoinToBoard('black');
+                        }
+                    }
+                }
+
+                // Check coins
+                coins.forEach(coin => {
+                    if (coin.isActive) {
+                        const distCoinPocket = Math.sqrt(Math.pow(coin.x - pocket.x, 2) + Math.pow(coin.y - pocket.y, 2));
+                        if (distCoinPocket < POCKET_RADIUS + coin.radius * 0.7) {
+                            playSound(pocketSoundBuffer);
+                            coin.isActive = false; // This will trigger CSS animation via renderCoin
+                            coin.vx = 0; coin.vy = 0;
+                            
+                            if (coin.type === 'queen') {
+                                if (queenSecuredBy === 0) { // only if not already secured
+                                    messageElement.textContent = `Queen pocketed by Player ${currentPlayer}! Cover it.`;
+                                    queenPocketedTempBy = currentPlayer;
+                                }
+                                localTurnPocketed = true; // Queen counts as own coin for turn continuation
+                            } else if ((coin.type === 'white' && currentPlayer === 1) || (coin.type === 'black' && currentPlayer === 2)) {
+                                // Pocketed own coin
+                                if (currentPlayer === 1) scorePlayer1++; else scorePlayer2++;
+                                messageElement.textContent = `Player ${currentPlayer} pocketed a ${coin.type} coin.`;
+                                localTurnPocketed = true;
+
+                                if (queenPocketedTempBy === currentPlayer) { // Covering the queen
+                                    messageElement.textContent = `Queen covered by Player ${currentPlayer}!`;
+                                    if (currentPlayer === 1) scorePlayer1 += 3; // Queen points
+                                    else scorePlayer2 += 3;
+                                    queenSecuredBy = currentPlayer;
+                                    queenPocketedTempBy = 0; 
+                                }
+                            } else { // Pocketed opponent's coin
+                                if (coin.type === 'white') scorePlayer2++; else scorePlayer1++;
+                                messageElement.textContent = `Player ${currentPlayer} pocketed opponent's coin.`;
+                                // This is not a foul if own coin was also pocketed in same shot. Handled in turn logic.
+                            }
+                        }
+                    }
+                });
+            });
+            if(localFoul) foulCommitted = true;
+            if(localTurnPocketed) turnPocketedCoin = true;
+        }
+        
+        function returnCoinToBoard(type) {
+            const coinToReturn = coins.find(c => c.type === type && !c.isActive && c.type !== 'queen');
+            if (coinToReturn) {
+                coinToReturn.isActive = true;
+                coinToReturn.x = BOARD_SIZE / 2 + (Math.random() - 0.5) * 30; // Near center
+                coinToReturn.y = BOARD_SIZE / 2 + (Math.random() - 0.5) * 30;
+                messageElement.textContent += ` Returned a ${type} coin.`;
+                renderCoin(coinToReturn);
+            }
+        }
+
+        function gameTick() {
+            if (!isStriking) return;
+
+            const somethingMoved = updatePositions();
+            handleCollisions();
+            checkPocketing(); // Sets turnPocketedCoin and foulCommitted flags
+            renderAll();
+            updateInfoPanel();
+
+            if (!somethingMoved && (striker.vx === 0 && striker.vy === 0 && coins.every(c => !c.isActive || (c.vx === 0 && c.vy === 0)))) {
+                isStriking = false;
+                striker.el.style.cursor = 'grab';
+                cancelAnimationFrame(gameLoopId);
+                
+                // End of turn logic
+                // If Queen was pocketed but not covered
+                if (queenPocketedTempBy !== 0 && queenSecuredBy !== queenPocketedTempBy) {
+                    messageElement.textContent = `Queen was not covered! Queen returns.`;
+                    const queen = coins.find(c => c.type === 'queen');
+                    if (queen && !queen.isActive) { // ensure it was the one pocketed
+                        queen.isActive = true;
+                        queen.x = BOARD_SIZE / 2; queen.y = BOARD_SIZE / 2;
+                        renderCoin(queen);
+                    }
+                    queenPocketedTempBy = 0; // Reset temp status
+                }
+
+                if (foulCommitted || !turnPocketedCoin) {
+                    if(foulCommitted) messageElement.textContent += " Turn changes due to foul.";
+                    else if(!turnPocketedCoin) messageElement.textContent += " No coin pocketed. Turn changes.";
+                    switchPlayer();
+                } else {
+                    messageElement.textContent = `Player ${currentPlayer} gets another turn.`;
+                }
+                
+                resetStriker(); // For next turn/shot
+                checkWinCondition();
+
+                // Reset turn-specific flags
+                turnPocketedCoin = false;
+                foulCommitted = false;
+            } else {
+                gameLoopId = requestAnimationFrame(gameTick);
+            }
+        }
+
+        function switchPlayer() {
+            currentPlayer = (currentPlayer === 1) ? 2 : 1;
+            updateInfoPanel();
+        }
+        
+        function updateInfoPanel() {
+            infoPlayerElement.innerHTML = `${currentPlayer} (<span class="${currentPlayer === 1 ? 'white' : 'black'}">${currentPlayer === 1 ? 'White' : 'Black'}</span>)`;
+            // Highlight current player's score (optional)
+            document.querySelectorAll('#info-panel p span[id^="score-player"]').forEach(el => el.classList.remove('player-turn-highlight'));
+            if(currentPlayer === 1) infoScore1Element.classList.add('player-turn-highlight');
+            else infoScore2Element.classList.add('player-turn-highlight');
+
+            infoScore1Element.textContent = scorePlayer1;
+            infoScore2Element.textContent = scorePlayer2;
+        }
+
+        function checkWinCondition() {
+            const whiteCoinsActive = coins.filter(c => c.type === 'white' && c.isActive).length;
+            const blackCoinsActive = coins.filter(c => c.type === 'black' && c.isActive).length;
+            const queenActive = coins.find(c => c.type === 'queen' && c.isActive);
+
+            let winner = null;
+            // Win by points (e.g., first to 25, or highest score after all coins pocketed)
+            // Simplified: if a player clears their coins AND has the queen
+            if (whiteCoinsActive === 0 && queenSecuredBy === 1) winner = 1;
+            if (blackCoinsActive === 0 && queenSecuredBy === 2) winner = 2;
+
+            // If all coins are pocketed (except possibly queen if not secured)
+            if (whiteCoinsActive === 0 && blackCoinsActive === 0 && !queenActive) {
+                 if (scorePlayer1 > scorePlayer2 && queenSecuredBy === 1) winner = 1;
+                 else if (scorePlayer2 > scorePlayer1 && queenSecuredBy === 2) winner = 2;
+                 else if (scorePlayer1 > scorePlayer2 && queenSecuredBy !==1 && queenSecuredBy !==2 ) winner = 1; // if queen was not secured by anyone but p1 has more points
+                 else if (scorePlayer2 > scorePlayer1 && queenSecuredBy !==1 && queenSecuredBy !==2 ) winner = 2; // if queen was not secured by anyone but p2 has more points
+                 // Draw or more complex tie-breaking not handled here
+            }
+            
+            if (scorePlayer1 >= 29) winner = 1; // Max points win
+            if (scorePlayer2 >= 29) winner = 2;
+
+
+            if (winner) {
+                messageElement.textContent = `Player ${winner} WINS! Final Score: P1=${scorePlayer1}, P2=${scorePlayer2}`;
+                isStriking = true; // Prevent further moves
+                cancelAnimationFrame(gameLoopId);
+                striker.el.removeEventListener('mousedown', handleStrikerMouseDown);
+                striker.el.removeEventListener('touchstart', handleStrikerMouseDown);
+            }
+        }
+
+        // --- Striker Interaction & Aiming ---
+        let dragStartX, dragStartY, isPlacingStriker;
+
+        function handleStrikerMouseDown(e) {
+            e.preventDefault(); // Prevent default actions like text selection or page scroll on touch
+            if (audioContext.state === 'suspended') audioContext.resume(); // For browser autoplay policies
+            if (isStriking) return;
+
+            isPlacingStriker = !striker.isPlaced;
+            striker.el.style.cursor = 'grabbing';
+            
+            const rect = boardElement.getBoundingClientRect();
+            // For touch, use e.touches[0]
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+
+            dragStartX = (clientX - rect.left) * (BOARD_SIZE / rect.width); // Scale mouse pos to board coords
+            dragStartY = (clientY - rect.top) * (BOARD_SIZE / rect.height);
+
+            if (isPlacingStriker) {
+                document.addEventListener('mousemove', handleStrikerPlacementMove);
+                document.addEventListener('mouseup', handleStrikerPlacementUp);
+                document.addEventListener('touchmove', handleStrikerPlacementMove, { passive: false });
+                document.addEventListener('touchend', handleStrikerPlacementUp);
+            } else { // Is placed, so now aiming
+                isAiming = true;
+                aimLineElement.style.display = 'block';
+                powerIndicatorContainer.style.display = 'block';
+                document.addEventListener('mousemove', handleAimMove);
+                document.addEventListener('mouseup', handleAimUp);
+                document.addEventListener('touchmove', handleAimMove, { passive: false });
+                document.addEventListener('touchend', handleAimUp);
+            }
+        }
+
+        function handleStrikerPlacementMove(e) {
+            e.preventDefault();
+            const rect = boardElement.getBoundingClientRect();
+            const clientX = e.clientX || e.touches[0].clientX;
+            
+            let newX = (clientX - rect.left) * (BOARD_SIZE / rect.width);
+            striker.x = Math.max(BASELINE_X_MIN, Math.min(BASELINE_X_MAX, newX));
+            // Y is fixed on baseline during placement
+            const baselineY = (currentPlayer === 1) ? BOARD_SIZE - BASELINE_Y_OFFSET : BASELINE_Y_OFFSET;
+            striker.y = baselineY;
+            renderStriker();
+        }
+
+        function handleStrikerPlacementUp(e) {
+            striker.isPlaced = true;
+            messageElement.textContent = `Player ${currentPlayer}, aim and strike.`;
+            striker.el.style.cursor = 'grab';
+            document.removeEventListener('mousemove', handleStrikerPlacementMove);
+            document.removeEventListener('mouseup', handleStrikerPlacementUp);
+            document.removeEventListener('touchmove', handleStrikerPlacementMove);
+            document.removeEventListener('touchend', handleStrikerPlacementUp);
+        }
+
+        function handleAimMove(e) {
+            e.preventDefault();
+            if (!isAiming) return;
+
+            const rect = boardElement.getBoundingClientRect();
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+            
+            const mouseX = (clientX - rect.left) * (BOARD_SIZE / rect.width);
+            const mouseY = (clientY - rect.top) * (BOARD_SIZE / rect.height);
+
+            // Aim line is drawn from striker towards opposite of mouse drag
+            const dx = striker.x - mouseX; 
+            const dy = striker.y - mouseY;
+            const angle = Math.atan2(dy, dx);
+            let distance = Math.sqrt(dx * dx + dy * dy);
+            
+            const visualAimDistance = Math.min(distance, BOARD_SIZE * 0.3); // Max visual length of aim line
+            aimLineElement.style.left = `${striker.x}px`;
+            aimLineElement.style.top = `${striker.y - 1.5}px`; // Center line
+            aimLineElement.style.width = `${visualAimDistance}px`;
+            aimLineElement.style.transform = `rotate(${angle}rad)`;
+            
+            // Power indicator
+            const powerRatio = Math.min(distance / (BOARD_SIZE * 0.4), 1); // Cap power based on drag dist
+            powerIndicatorBar.style.width = `${powerRatio * 100}%`;
+        }
+        
+        function handleAimUp(e) {
+            if (!isAiming) return;
+            isAiming = false;
+            aimLineElement.style.display = 'none';
+            powerIndicatorContainer.style.display = 'none';
+            powerIndicatorBar.style.width = '0%';
+            striker.el.style.cursor = 'default'; // No grabbing while striking
+
+            document.removeEventListener('mousemove', handleAimMove);
+            document.removeEventListener('mouseup', handleAimUp);
+            document.removeEventListener('touchmove', handleAimMove);
+            document.removeEventListener('touchend', handleAimUp);
+
+            const rect = boardElement.getBoundingClientRect();
+            // Use changedTouches for touchend
+            const clientX = e.clientX || e.changedTouches[0].clientX;
+            const clientY = e.clientY || e.changedTouches[0].clientY;
+
+            const mouseUpX = (clientX - rect.left) * (BOARD_SIZE / rect.width);
+            const mouseUpY = (clientY - rect.top) * (BOARD_SIZE / rect.height);
+
+            const dx = striker.x - mouseUpX; // Velocity is opposite to drag direction from striker
+            const dy = striker.y - mouseUpY;
+            
+            const dragDistance = Math.sqrt(dx * dx + dy * dy);
+            if (dragDistance < 5) return; // Min drag to strike, prevent accidental taps
+
+            const angle = Math.atan2(dy, dx);
+            // Power is proportional to drag distance relative to board size for consistency
+            const powerMagnitude = Math.min(dragDistance / (BOARD_SIZE * 0.4), 1) * MAX_STRIKE_POWER; 
+            
+            striker.vx = Math.cos(angle) * powerMagnitude;
+            striker.vy = Math.sin(angle) * powerMagnitude;
+            
+            playSound(strikeSoundBuffer);
+            isStriking = true;
+            messageElement.textContent = "Striking...";
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            gameLoopId = requestAnimationFrame(gameTick);
+        }
+
+
+        // --- UI Controls ---
+        resetButton.addEventListener('click', initGame);
+
+        rulesButton.addEventListener('click', () => { rulesModal.style.display = 'flex'; });
+        closeRulesModalButton.addEventListener('click', () => { rulesModal.style.display = 'none'; });
+        window.addEventListener('click', (event) => { // Close modal if clicked outside
+            if (event.target == rulesModal) rulesModal.style.display = 'none';
+        });
+
+        soundToggleButton.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            updateSoundButton();
+            if (soundEnabled && audioContext.state === 'suspended') audioContext.resume();
+        });
+        function updateSoundButton() {
+            soundToggleButton.textContent = `Sound: ${soundEnabled ? 'ON' : 'OFF'}`;
+            soundToggleButton.style.backgroundColor = soundEnabled ? 'var(--accent-color)' : '#aaa';
+        }
+
+        fullscreenButton.addEventListener('click', toggleFullScreen);
+        function toggleFullScreen() {
+            const elem = document.documentElement; // Fullscreen the whole page
+            if (!document.fullscreenElement) {
+                if (elem.requestFullscreen) elem.requestFullscreen().catch(err => console.error(err));
+                else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen(); // Firefox
+                else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); // Chrome, Safari, Opera
+                else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); // IE/Edge
+                fullscreenButton.textContent = "Exit Full Screen";
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                else if (document.msExitFullscreen) document.msExitFullscreen();
+                fullscreenButton.textContent = "Full Screen";
+            }
+        }
+        // Hide fullscreen button on devices that don't support it well or it's not needed
+        if (!document.documentElement.requestFullscreen && !document.documentElement.webkitRequestFullscreen) {
+            fullscreenButton.style.display = 'none';
+        }
+
+        // Optional: Toggle board view (flat vs tilted)
+        // toggleViewButton.addEventListener('click', () => {
+        //    boardElement.classList.toggle('flat-view');
+        // });
+
+
+        // --- Initialization ---
+        function showLoader(show) {
+            loaderElement.style.display = show ? 'block' : 'none';
+        }
+
+        async function initGame() {
+            showLoader(true);
+            cancelAnimationFrame(gameLoopId); // Stop any existing game loop
+            
+            // Reset scores and player
+            currentPlayer = 1;
+            scorePlayer1 = 0;
+            scorePlayer2 = 0;
+            queenPocketedTempBy = 0;
+            queenSecuredBy = 0;
+            turnPocketedCoin = false;
+            foulCommitted = false;
+            
+            updateDimensions(); // Call this first as coin/striker sizes depend on it
+            if (!striker.el) { // Ensure striker DOM element exists before resetStriker
+                 striker.el = document.createElement('div');
+                 striker.el.id = 'striker';
+                 boardElement.appendChild(striker.el);
+                 striker.el.addEventListener('mousedown', handleStrikerMouseDown);
+                 striker.el.addEventListener('touchstart', handleStrikerMouseDown, { passive: false });
+            }
+            setupCoins(); // Sets up and renders coins
+            resetStriker(); // Sets up and renders striker
+            updateInfoPanel();
+            updateSoundButton(); // In case sound was toggled before reset
+
+            // Ensure event listeners are attached (or re-attached if removed)
+            // Striker listeners are added in resetStriker if el is created
+            // Global listeners for aiming/placement are added/removed dynamically
+
+            // Small delay to ensure DOM is ready and loader is visible
+            await new Promise(resolve => setTimeout(resolve, 100)); 
+            showLoader(false);
+        }
+        
+        // Global listeners for resizing and initial load
+        window.addEventListener('resize', () => {
+            // Re-initialize or just update dimensions and re-render.
+            // For simplicity now, full re-init on resize might be easiest
+            // if game state is complex to rescale.
+            // Consider a more graceful resize handler for a production game.
+            initGame(); 
+        });
+
+        // Initialize the game when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initSounds().then(() => { // Load sounds then init game
+                 initGame();
+            });
+        });
+
+    </script>
+</body>
+</html>
